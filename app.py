@@ -10,17 +10,19 @@ REDIRECT_URI = "https://shiftparser-gdxmz98re9g3npkaxgskke.streamlit.app/"
 
 st.title("Shift Parser with Seamless Google OAuth")
 
-uploaded_creds = st.file_uploader(
-    "Upload your Google OAuth credentials.json (from Web client!)",
-    type="json"
-)
-if uploaded_creds is not None and "creds_bytes" not in st.session_state:
-    st.session_state["creds_bytes"] = uploaded_creds.read()
-
+# 1. Only ask for upload if not already saved!
 if "creds_bytes" not in st.session_state:
-    st.info("Please upload your credentials.json to use the app.")
-    st.stop()
+    uploaded_creds = st.file_uploader(
+        "Upload your Google OAuth credentials.json (from Web client!)",
+        type="json"
+    )
+    if uploaded_creds is not None:
+        st.session_state["creds_bytes"] = uploaded_creds.read()
+        st.experimental_rerun()  # force a clean run with creds saved
+    else:
+        st.stop()
 
+# 2. Always create a temp file from session_state bytes
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tf:
     tf.write(st.session_state["creds_bytes"])
     creds_path = tf.name
@@ -45,7 +47,7 @@ def authenticate():
             creds = flow.credentials
             st.session_state["google_creds"] = creds
             st.session_state["just_authenticated"] = True
-            st.success("✅ Successfully authenticated!")
+            st.experimental_rerun()
         except Exception as e:
             st.error(f"Authentication failed: {e}")
             st.stop()
@@ -55,7 +57,7 @@ def authenticate():
 def run_shift_parser(creds):
     st.header("Shift Parser Main App")
     st.success("You are authenticated! Add your main logic here.")
-    # Example logic: list user's Gmail labels (replace with your own)
+    # Example: list user's Gmail labels (replace with your logic)
     from googleapiclient.discovery import build
     service = build('gmail', 'v1', credentials=creds)
     results = service.users().labels().list(userId='me').execute()
@@ -67,6 +69,7 @@ def run_shift_parser(creds):
         for label in labels:
             st.write(f"- {label['name']}")
 
+# 3. Auth flow (do not ask for upload again)
 if "google_creds" not in st.session_state:
     authenticate()
 else:
