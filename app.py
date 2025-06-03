@@ -32,7 +32,7 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tf:
 
 if "google_creds" not in st.session_state:
     flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_console()
     st.session_state["google_creds"] = creds
 else:
     creds = st.session_state["google_creds"]
