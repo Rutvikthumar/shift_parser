@@ -1,6 +1,6 @@
 import streamlit as st
 import tempfile
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -8,7 +8,7 @@ SCOPES = [
 ]
 
 uploaded_creds = st.file_uploader(
-    "Upload your Google OAuth credentials.json (never share this file!)",
+    "Upload your Google OAuth credentials.json (from Web client!)",
     type="json"
 )
 if uploaded_creds is None:
@@ -19,16 +19,25 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tf:
     tf.write(uploaded_creds.read())
     creds_path = tf.name
 
-if "google_creds" not in st.session_state:
-    flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
-    auth_url, _ = flow.authorization_url(prompt='consent')
-    st.info("**Step 1:** Click the link below to authenticate with Google.\n\n**Step 2:** Approve and copy the code you are given.")
-    st.markdown(f"[Authenticate with Google]({auth_url})")
-    auth_code = st.text_input("Paste here the code you get after authenticating:")
+REDIRECT_URI = "https://shiftparser-gdxmz98re9g3npkaxgskke.streamlit.app/"
 
-    if auth_code:
+if "google_creds" not in st.session_state:
+    flow = Flow.from_client_secrets_file(
+        creds_path,
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI
+    )
+
+    # Step 1: Create authorization URL
+    auth_url, state = flow.authorization_url(prompt='consent', include_granted_scopes='true')
+
+    st.info("**Step 1:** Click the link below to authenticate with Google.\n\n**Step 2:** Approve, and after you are redirected, copy the full URL from your browser's address bar and paste it below.")
+    st.markdown(f"[Authenticate with Google]({auth_url})")
+    auth_response = st.text_input("Paste the **full URL** you were redirected to after Google login:")
+
+    if auth_response:
         try:
-            flow.fetch_token(code=auth_code)
+            flow.fetch_token(authorization_response=auth_response)
             creds = flow.credentials
             st.session_state["google_creds"] = creds
             st.success("✅ Successfully authenticated!")
