@@ -10,15 +10,18 @@ REDIRECT_URI = "https://shiftparser-gdxmz98re9g3npkaxgskke.streamlit.app/"
 
 st.title("Shift Parser with Seamless Google OAuth")
 
-# 1. Only ask for upload if not already saved!
+# 1. Only ask for upload if creds not in session_state
 if "creds_bytes" not in st.session_state:
     uploaded_creds = st.file_uploader(
         "Upload your Google OAuth credentials.json (from Web client!)",
         type="json"
     )
     if uploaded_creds is not None:
+        # Save to session state
         st.session_state["creds_bytes"] = uploaded_creds.read()
-        st.experimental_rerun()  # force a clean run with creds saved
+        if st.button("Continue"):
+            st.experimental_rerun()
+        st.stop()
     else:
         st.stop()
 
