@@ -1,12 +1,12 @@
 from shift_extract import parse_shift_email
 from gmail_service import get_shift_emails
 
-def parse_gmail_shifts(processed_ids):
+def parse_gmail_shifts(processed_ids, creds):
     """
     Fetch and parse Gmail shift emails, skipping processed_ids.
     Returns: (list of shift dicts, list of new Gmail message IDs)
     """
-    messages = get_shift_emails()  # [{id, body}]
+    messages = get_shift_emails(creds)  # [{id, body}]
     new_shifts = []
     new_ids = []
     for msg in messages:
