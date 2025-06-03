@@ -1,22 +1,11 @@
 import streamlit as st
-import pandas as pd
 import tempfile
-
-from gmail_parser import parse_gmail_shifts
-from drive_parser import parse_drive_shifts
-from cache_manager import load_cache, update_cache
-from sheets_export import export_to_csv
-
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/drive.readonly"
 ]
-
-st.set_page_config(page_title="TAL Pharmacy Shift Parser", layout="wide")
-st.title("TAL Pharmacy Shift Parser")
-st.markdown("One-click tool for parsing Gmail and WhatsApp shift data.")
 
 uploaded_creds = st.file_uploader(
     "Upload your Google OAuth credentials.json (never share this file!)",
@@ -32,32 +21,22 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tf:
 
 if "google_creds" not in st.session_state:
     flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
-    creds = flow.run_console()
-    st.session_state["google_creds"] = creds
+    auth_url, _ = flow.authorization_url(prompt='consent')
+    st.info("**Step 1:** Click the link below to authenticate with Google.\n\n**Step 2:** Approve and copy the code you are given.")
+    st.markdown(f"[Authenticate with Google]({auth_url})")
+    auth_code = st.text_input("Paste here the code you get after authenticating:")
+
+    if auth_code:
+        try:
+            flow.fetch_token(code=auth_code)
+            creds = flow.credentials
+            st.session_state["google_creds"] = creds
+            st.success("✅ Successfully authenticated!")
+            st.experimental_rerun()
+        except Exception as e:
+            st.error(f"Authentication failed: {e}")
+            st.stop()
+    else:
+        st.stop()
 else:
     creds = st.session_state["google_creds"]
-
-st.success("✅ Authenticated with Google. Ready to parse shifts!")
-
-if st.button("Parse Now"):
-    cache = load_cache()
-    gmail_shifts, gmail_ids = parse_gmail_shifts(cache["gmail_ids"], creds)
-    drive_shifts, drive_ids = parse_drive_shifts(cache["drive_ids"], creds)
-    all_shifts = gmail_shifts + drive_shifts
-
-    update_cache(gmail_ids, drive_ids)
-    if all_shifts:
-        df = pd.DataFrame(all_shifts)
-        st.dataframe(df)
-        export_to_csv(df)
-        st.success(f"Exported {len(all_shifts)} shifts to output/shifts.csv")
-        with open("output/shifts.csv", "rb") as f:
-            st.download_button("Download CSV", f, "shifts.csv")
-    else:
-        st.info("No new shift data found.")
-else:
-    try:
-        with open("output/shifts.csv", "rb") as f:
-            st.download_button("Download last CSV", f, "shifts.csv")
-    except FileNotFoundError:
-        pass
