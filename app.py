@@ -14,12 +14,15 @@ uploaded_creds = st.file_uploader(
     "Upload your Google OAuth credentials.json (from Web client!)",
     type="json"
 )
-if uploaded_creds is None:
+if uploaded_creds is not None and "creds_bytes" not in st.session_state:
+    st.session_state["creds_bytes"] = uploaded_creds.read()
+
+if "creds_bytes" not in st.session_state:
     st.info("Please upload your credentials.json to use the app.")
     st.stop()
 
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tf:
-    tf.write(uploaded_creds.read())
+    tf.write(st.session_state["creds_bytes"])
     creds_path = tf.name
 
 def authenticate():
